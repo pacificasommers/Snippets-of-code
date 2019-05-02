@@ -1,0 +1,9 @@
+# A snippet of code to filter out ESVs that don't appear in a subset of samples, and write the filtered esv table as a csv
+
+esv.table <- read.table("my_esv_table_withtaxonomy.txt",sep='\t',comment.char="", row.names=1, head=T)
+head(esv.table)
+# how many columns of taxonomy do you have? e.g. e vals or accession columns? that number is "n"
+n <- 3
+esv.table$sum <- rowSums(esv.table[,1:(ncol(esv.table)-n)])
+esvs.filtered <- esv.table[esv.table$sum>0,1:(ncol(esv.table)-1)]
+write.csv(esvs.filtered,"esvs_filtered.csv")
