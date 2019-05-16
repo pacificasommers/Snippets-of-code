@@ -1,0 +1,26 @@
+
+# Code to run a redundancy analysis (RDA) on a Hellinger transformation of unrarefied OTU data
+
+#read in files: you need an OTU table and a file that assigns groups to samples
+otu.table <- read.table("myotutable.txt",skip=1,header=TRUE) #use an UNrarefied dataset for this analysis
+map <- read.csv("mymappingfile.csv",header = TRUE) #this might also be your alpha diversity file. anything with the grouping info.
+
+#subset tables for just the samples you're analyzing
+mysub <- subset(map,$Group=="GroupsOfInterest") #change your column name ("$Group") and factor ("GroupsOfInterest") to the ones you have
+otu.table.subset <- otu.table[,colnames(otu.table) %in% mysub$SampleID] # or rownames(mysub) if your sample names are rownames instead of a column
+otu.table.subset <- otu.table.subset[rowSums(otu.table.subset)>0,] #get rid of OTUs that don't show up in this dataset
+
+#transpose otu table and order rows of each the same way
+t.otu.table.subset <- t(otu.table.subset)
+t.otu.table.subset <- t.otu.table.subset[order(colnames(t.otu.table.subset)),]
+mysub <- mysub[order(colnames(mysub)),]
+
+#load package for analysis
+if (!require(vegan)) {install.packages("vegan")}
+library(vegan)
+
+# run rda of otu table against factor of interest ("myfactor) in mapping file
+rda.hell <- rda(decostand(t.otu.table.subset), "hell")~myfactor,mysub)
+anova(rda.hell,by="term") 
+plot(rda.hell,display = c("wa", "lc", "bp"))
+summary(rda.hell)
