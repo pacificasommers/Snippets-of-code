@@ -1,0 +1,63 @@
+# A script to take an OTU table from high-throughput sequencing and make 
+#good-looking rank-abundance plots of top 10 most abundant phylotypes, 
+#with bootstrapped error bars.
+
+# load OTU table
+otus <- read.table("myotutable.txt",skip=1,header=TRUE) #may need to check for "#" at start of col names if not loading right
+samplelist <- c() #define which samples from the OTU table you want to include
+my.otus <- otus[,colnames(otus) %in% samplelist]
+
+# define a function (courtesy of Jack Darcy)
+# get "nth" taxon, where n = taxlvl
+getlast <- function(x, n){
+  return(x[length(x)])
+}
+
+# SUBSET GROUPS, CONVERT TO PERCENT, ADD TAXONOMY
+my.otus.per <- 100*sweep(my.otus,MARGIN=2,FUN="/",STATS=colSums(my.otus))
+my.otus.per$tax <- otus$taxonomy
+
+# SORT
+my.otus.per <- my.otus.per[order(rowSums(my.otus.per[,1:(ncol(my.otus.per)-1)]),decreasing = TRUE),]
+
+# SELECT TOP 10 AND TRANSPOSE
+my.otus.per.top <- t(my.otus.per[1:10,1:(ncol(my.otus.per)-1)])
+
+# Simplify taxonomy to most detailed available
+taxlist <- lapply(X=as.character(my.otus.per$tax[1:10]), FUN=strsplit, split=";")
+taxlist <- simplify2array(taxlist)
+tax_last <- unlist(sapply(taxlist, getlast))
+colnames(my.otus.per.top) <- tax_last
+
+# NOW FORMAT FOR PLOTTING
+colnames(my.otus.per.top) <- tax_last
+my.otus.fp <- melt(my.otus.per.top)
+
+# Make plot
+myplot <- ggplot(my.otus.fp, aes(x = Var2, y = value)) +
+  scale_y_continuous(expand=c(0,0)) +
+  scale_fill_manual(values=c("gray1")) +
+  ## bars at mean height per group:
+  stat_summary(fun.y="mean",geom="bar",colour="black",position="dodge",alpha=0.5)+
+  ## bootstrap-based whiskers that are 95% conf ints:
+  stat_summary(fun.data="mean_cl_boot",position=position_dodge(width = 0.90),geom="linerange",size=2)+
+  #geom_text(data=dadjsum,aes(label=Glacier),colour="black")+
+  # geom_hline(yintercept=initial, linetype="dashed", color = "black", size=1) +
+  annotate(geom="text", x=6, y=(.45*max(my.otus.per.top[,1])), label=paste("n = ",(ncol(my.otus.per)-1)), size=6) +
+  labs(x="",y="",
+       title="Rank abundance") +
+  theme(
+    plot.title = element_text(face="bold",size=18) 
+    ,plot.background = element_blank()
+    ,panel.background = element_blank()
+    ,panel.grid.major = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.border = element_blank()
+    ,axis.line = element_line(colour="black", size=1)
+    ,axis.text.x = element_text(angle=90,color="black", size=18)
+    ,axis.text.y = element_text(color="black", size=18)
+    ,axis.title.x = element_text(colour="black", size=18, face="bold")
+    ,axis.title.y = element_text(color="black", size=18, face="bold")
+    ,legend.position="none"
+  )
+myplot
