@@ -30,7 +30,7 @@ tax_last <- unlist(sapply(taxlist, getlast))
 colnames(my.otus.per.top) <- tax_last
 
 # NOW FORMAT FOR PLOTTING
-colnames(my.otus.per.top) <- tax_last
+library(reshape2)
 my.otus.fp <- melt(my.otus.per.top)
 
 # Make plot
